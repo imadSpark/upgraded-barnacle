@@ -10,6 +10,13 @@ type OrderPageParams = {
   id: string
 }
 
+// Define country code options
+type CountryCode = {
+  code: string;
+  name: string;
+  flag: string;
+}
+
 // Using 'any' type for params because Next.js expects it to be used with React.use()
 export default function OrderPage({ params }: { params: any }) {
   // Unwrap params with React.use() as required by Next.js
@@ -20,8 +27,26 @@ export default function OrderPage({ params }: { params: any }) {
     notFound()
   }
 
+  // Country code options (African and EU countries)
+  const countryCodes: CountryCode[] = [
+    { code: "+27", name: "South Africa", flag: "🇿🇦" },
+    { code: "+234", name: "Nigeria", flag: "🇳🇬" },
+    { code: "+254", name: "Kenya", flag: "🇰🇪" },
+    { code: "+20", name: "Egypt", flag: "🇪🇬" },
+    { code: "+233", name: "Ghana", flag: "🇬🇭" },
+    { code: "+251", name: "Ethiopia", flag: "🇪🇹" },
+    { code: "+212", name: "Morocco", flag: "🇲🇦" },
+    { code: "+33", name: "France", flag: "🇫🇷" },
+    { code: "+49", name: "Germany", flag: "🇩🇪" },
+    { code: "+39", name: "Italy", flag: "🇮🇹" },
+    { code: "+34", name: "Spain", flag: "🇪🇸" },
+    { code: "+44", name: "United Kingdom", flag: "🇬🇧" },
+    { code: "+31", name: "Netherlands", flag: "🇳🇱" },
+  ]
+
   // Form state
   const [quantity, setQuantity] = useState(1)
+  const [selectedCountryCode, setSelectedCountryCode] = useState(countryCodes[0])
   const [formData, setFormData] = useState({
     fullName: '',
     phoneNumber: '',
@@ -70,17 +95,48 @@ export default function OrderPage({ params }: { params: any }) {
     }
   }
 
+  // Handle country code selection
+  const handleCountryCodeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const code = e.target.value
+    const selectedCode = countryCodes.find(country => country.code === code) || countryCodes[0]
+    setSelectedCountryCode(selectedCode)
+    
+    // Update phone number with new country code if needed
+    if (formData.phoneNumber && !formData.phoneNumber.startsWith('+')) {
+      setFormData({
+        ...formData,
+        phoneNumber: selectedCode.code + formData.phoneNumber
+      })
+    }
+  }
+
   // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
-    setFormData({
-      ...formData,
-      [name]: value
-    })
+    
+    // Special handling for phone number to ensure it has country code
+    if (name === 'phoneNumber') {
+      let phoneValue = value
+      
+      // If user tries to delete the country code, prevent it
+      if (!phoneValue.startsWith('+')) {
+        phoneValue = selectedCountryCode.code + phoneValue.replace(/^\+/, '')
+      }
+      
+      setFormData({
+        ...formData,
+        [name]: phoneValue
+      })
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value
+      })
+    }
 
     // Validate field if form was already submitted once
     if (attemptedSubmit) {
-      validateField(name, value)
+      validateField(name, name === 'phoneNumber' ? formData.phoneNumber : value)
     }
   }
 
@@ -95,8 +151,8 @@ export default function OrderPage({ params }: { params: any }) {
       case 'phoneNumber':
         if (!value) {
           errorMessage = 'Phone number is required'
-        } else if (!/^\+?[0-9]{10,15}$/.test(value.toString())) {
-          errorMessage = 'Please enter a valid phone number'
+        } else if (!/^\+[0-9]{1,4}[0-9]{6,12}$/.test(value.toString())) {
+          errorMessage = 'Please enter a valid phone number with country code (e.g., +27123456789)'
         }
         break
       case 'email':
@@ -217,13 +273,6 @@ export default function OrderPage({ params }: { params: any }) {
       <div className="max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Order Details 📋</h1>
 
-        {/* Order Status Alert */}
-        {orderStatus && (
-          <div className={`mb-6 p-4 rounded-lg ${orderStatus.success ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100' : 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'}`}>
-            {orderStatus.message}
-          </div>
-        )}
-
         {/* Selected Meal */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-8">
           <div className="flex gap-6">
@@ -293,13 +342,27 @@ export default function OrderPage({ params }: { params: any }) {
               </div>
               <div>
                 <label className="block text-gray-700 dark:text-gray-300 mb-2">Phone Number</label>
-                <input
-                  type="tel"
-                  name="phoneNumber"
-                  value={formData.phoneNumber}
-                  onChange={handleInputChange}
-                  className={`w-full p-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600 ${errors.phoneNumber ? 'border-red-500' : ''}`}
-                />
+                <div className="flex gap-2">
+                  <select
+                    value={selectedCountryCode.code}
+                    onChange={handleCountryCodeChange}
+                    className="p-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600"
+                  >
+                    {countryCodes.map((country) => (
+                      <option key={country.code} value={country.code}>
+                        {country.flag} {country.code}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="tel"
+                    name="phoneNumber"
+                    value={formData.phoneNumber.replace(selectedCountryCode.code, '')}
+                    onChange={handleInputChange}
+                    placeholder="Phone number (without country code)"
+                    className={`flex-1 p-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600 ${errors.phoneNumber ? 'border-red-500' : ''}`}
+                  />
+                </div>
                 {errors.phoneNumber && (
                   <p className="text-red-500 text-sm mt-2 error-message">{errors.phoneNumber}</p>
                 )}
@@ -369,6 +432,13 @@ export default function OrderPage({ params }: { params: any }) {
             >
               {isSubmitting ? 'Placing Order...' : 'Place Order'}
             </button>
+            
+            {/* Order Status Alert - Moved below the button */}
+            {orderStatus && (
+              <div className={`mt-4 p-4 rounded-lg ${orderStatus.success ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100' : 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'}`}>
+                {orderStatus.message}
+              </div>
+            )}
           </div>
         </form>
       </div>
