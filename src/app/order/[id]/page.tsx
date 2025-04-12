@@ -3,12 +3,18 @@
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import { getMealById } from '@/data/meals'
-import { useState, FormEvent } from 'react'
+import { useState, FormEvent, use } from 'react'
 
-export default function OrderPage({ params }: { params: { id: string } }) {
-  // No need to unwrap params with React.use()
-  const mealId = params.id
-  const meal = getMealById(parseInt(mealId))
+// Define the type for params
+type OrderPageParams = {
+  id: string
+}
+
+// Using 'any' type for params because Next.js expects it to be used with React.use()
+export default function OrderPage({ params }: { params: any }) {
+  // Unwrap params with React.use() as required by Next.js
+  const unwrappedParams = use(params) as OrderPageParams
+  const meal = getMealById(parseInt(unwrappedParams.id))
   
   if (!meal) {
     notFound()
