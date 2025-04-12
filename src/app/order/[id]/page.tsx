@@ -3,17 +3,12 @@
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import { getMealById } from '@/data/meals'
-import { useState, FormEvent, use } from 'react'
+import { useState, FormEvent } from 'react'
 
-// Define the type for params
-type OrderPageParams = {
-  id: string
-}
-
-export default function OrderPage({ params }: { params: any }) {
-  // Unwrap params with React.use() as required by Next.js
-  const unwrappedParams = use(params) as OrderPageParams
-  const meal = getMealById(parseInt(unwrappedParams.id))
+export default function OrderPage({ params }: { params: { id: string } }) {
+  // No need to unwrap params with React.use()
+  const mealId = params.id
+  const meal = getMealById(parseInt(mealId))
   
   if (!meal) {
     notFound()
@@ -130,7 +125,7 @@ export default function OrderPage({ params }: { params: any }) {
     let isValid = true
 
     fieldsToValidate.forEach(field => {
-      let value = field === 'quantity' ? quantity : formData[field as keyof typeof formData]
+      const value = field === 'quantity' ? quantity : formData[field as keyof typeof formData]
       const fieldIsValid = validateField(field, value)
       if (!fieldIsValid) isValid = false
     })
